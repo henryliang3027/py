@@ -1,0 +1,480 @@
+<title>Genio 720 RTSP 解碼進度</title>
+<style>
+:root{
+  --ink:#182430;
+  --ink-soft:#4b5a63;
+  --paper:#eef2f1;
+  --panel:#ffffff;
+  --panel-2:#f5f8f7;
+  --line:#d7dfdc;
+  --accent:#0f7c7a;
+  --accent-ink:#075956;
+  --accent-soft:#d9efec;
+  --ok:#2f8f46;
+  --ok-soft:#e2f3e5;
+  --warn:#a15c00;
+  --warn-soft:#f7e8d2;
+  --mono-panel:#111a1e;
+  --mono-ink:#cfe8e4;
+  --mono-accent:#5fd9cf;
+  --shadow:0 1px 2px rgba(20,30,30,.06), 0 8px 24px -12px rgba(20,30,30,.18);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ink:#e8eef0;
+    --ink-soft:#a9b8bc;
+    --paper:#0f1517;
+    --panel:#161f22;
+    --panel-2:#131a1c;
+    --line:#28353a;
+    --accent:#3fc9bf;
+    --accent-ink:#9fece4;
+    --accent-soft:#173330;
+    --ok:#59c17a;
+    --ok-soft:#153322;
+    --warn:#e0a651;
+    --warn-soft:#3a2a12;
+    --mono-panel:#0a1113;
+    --mono-ink:#bfe4de;
+    --mono-accent:#5fd9cf;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  --ink:#e8eef0;
+  --ink-soft:#a9b8bc;
+  --paper:#0f1517;
+  --panel:#161f22;
+  --panel-2:#131a1c;
+  --line:#28353a;
+  --accent:#3fc9bf;
+  --accent-ink:#9fece4;
+  --accent-soft:#173330;
+  --ok:#59c17a;
+  --ok-soft:#153322;
+  --warn:#e0a651;
+  --warn-soft:#3a2a12;
+  --mono-panel:#0a1113;
+  --mono-ink:#bfe4de;
+  --mono-accent:#5fd9cf;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+}
+
+*{box-sizing:border-box;}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:"Public Sans","Noto Sans TC",-apple-system,BlinkMacSystemFont,sans-serif;
+  padding-inline:20px;
+  padding-block:48px;
+}
+h1,h2,h3{
+  font-family:"Archivo","Noto Sans TC",sans-serif;
+  text-wrap:balance;
+  margin:0;
+}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;}
+.wrap{
+  max-width:760px;
+  margin-inline:auto;
+  display:flex;
+  flex-direction:column;
+  gap:40px;
+}
+
+/* ---- masthead ---- */
+.masthead{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  padding-bottom:28px;
+  border-bottom:1px solid var(--line);
+}
+.eyebrow{
+  font-family:"IBM Plex Mono",monospace;
+  font-size:12.5px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--accent-ink);
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.eyebrow::before{
+  content:"";
+  width:8px;height:8px;border-radius:50%;
+  background:var(--accent);
+  box-shadow:0 0 0 3px var(--accent-soft);
+  flex:none;
+}
+h1{
+  font-size:clamp(26px,4.2vw,34px);
+  font-weight:800;
+  line-height:1.25;
+}
+.meta-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px 22px;
+  font-size:13.5px;
+  color:var(--ink-soft);
+}
+.meta-row span b{color:var(--ink);font-weight:600;}
+
+/* signal trace divider */
+.trace{
+  width:100%;
+  height:28px;
+  display:block;
+}
+.trace path{
+  fill:none;
+  stroke:var(--accent);
+  stroke-width:1.6;
+  opacity:.55;
+}
+
+/* ---- summary strip ---- */
+.status-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+.pill{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  padding:7px 13px;
+  border-radius:999px;
+  font-size:13px;
+  font-weight:600;
+  border:1px solid transparent;
+}
+.pill.ok{background:var(--ok-soft);color:var(--ok);border-color:color-mix(in srgb, var(--ok) 30%, transparent);}
+.pill.warn{background:var(--warn-soft);color:var(--warn);border-color:color-mix(in srgb, var(--warn) 30%, transparent);}
+.pill .dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex:none;}
+
+/* ---- section ---- */
+section{display:flex;flex-direction:column;gap:16px;}
+.section-head{display:flex;flex-direction:column;gap:4px;}
+.section-head .idx{
+  font-family:"IBM Plex Mono",monospace;
+  font-size:12px;
+  color:var(--accent-ink);
+  letter-spacing:.08em;
+}
+h2{font-size:20px;font-weight:800;}
+p{margin:0;line-height:1.7;font-size:15px;color:var(--ink-soft);max-width:65ch;}
+p b, li b{color:var(--ink);font-weight:600;}
+
+/* ---- checklist ---- */
+.checklist{
+  display:flex;
+  flex-direction:column;
+  gap:0;
+  border:1px solid var(--line);
+  border-radius:12px;
+  overflow:hidden;
+  background:var(--panel);
+  box-shadow:var(--shadow);
+}
+.check-item{
+  display:grid;
+  grid-template-columns:40px 1fr;
+  gap:14px;
+  padding:16px 18px;
+  border-bottom:1px solid var(--line);
+}
+.check-item:last-child{border-bottom:none;}
+.check-item .num{
+  font-family:"IBM Plex Mono",monospace;
+  font-size:13px;
+  font-weight:700;
+  color:var(--accent);
+  padding-top:2px;
+}
+.check-item .body{display:flex;flex-direction:column;gap:4px;}
+.check-item .title{font-weight:700;font-size:14.5px;}
+.check-item .desc{font-size:13.8px;color:var(--ink-soft);line-height:1.65;}
+.check-item .desc code{
+  font-family:"IBM Plex Mono",monospace;
+  font-size:.92em;
+  background:var(--panel-2);
+  padding:1px 6px;
+  border-radius:5px;
+  border:1px solid var(--line);
+}
+
+/* ---- compare cards ---- */
+.compare{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+}
+@media (max-width:560px){.compare{grid-template-columns:1fr;}}
+.compare-card{
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--panel);
+  padding:18px 18px 20px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  box-shadow:var(--shadow);
+}
+.compare-card.accent{border-color:color-mix(in srgb, var(--accent) 40%, var(--line));}
+.compare-card .tag{
+  align-self:flex-start;
+  font-family:"IBM Plex Mono",monospace;
+  font-size:11.5px;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  padding:3px 9px;
+  border-radius:6px;
+}
+.compare-card.accent .tag{background:var(--accent-soft);color:var(--accent-ink);}
+.compare-card.neutral .tag{background:var(--panel-2);color:var(--ink-soft);border:1px solid var(--line);}
+.compare-card h3{font-size:17px;font-weight:800;}
+.compare-card .sub{font-size:12.5px;color:var(--ink-soft);font-family:"IBM Plex Mono",monospace;}
+.compare-card ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:7px;}
+.compare-card li{font-size:13.6px;color:var(--ink-soft);line-height:1.6;}
+.compare-card li::marker{color:var(--accent);}
+
+/* ---- verdict ---- */
+.verdict{
+  border:1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  background:linear-gradient(180deg, var(--accent-soft), var(--panel) 60%);
+  border-radius:14px;
+  padding:22px 22px 24px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  box-shadow:var(--shadow);
+}
+.verdict .label{
+  font-family:"IBM Plex Mono",monospace;
+  font-size:12px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:var(--accent-ink);
+  font-weight:700;
+}
+.verdict h3{font-size:18px;font-weight:800;}
+.verdict p{max-width:none;color:var(--ink);}
+.trigger-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin-top:4px;
+}
+.trigger-list .row{
+  display:flex;
+  gap:10px;
+  align-items:baseline;
+  font-size:13.6px;
+}
+.trigger-list .row::before{
+  content:"→";
+  color:var(--accent);
+  font-weight:700;
+  flex:none;
+}
+
+/* ---- appendix / log ---- */
+details{
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--panel);
+  overflow:hidden;
+  box-shadow:var(--shadow);
+}
+summary{
+  cursor:pointer;
+  padding:14px 18px;
+  font-weight:700;
+  font-size:14px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  list-style:none;
+}
+summary::-webkit-details-marker{display:none;}
+summary::before{
+  content:"▸";
+  color:var(--accent);
+  transition:transform .15s ease;
+}
+details[open] summary::before{transform:rotate(90deg);}
+.log{
+  margin:0 16px 16px;
+  padding:14px 16px;
+  background:var(--mono-panel);
+  color:var(--mono-ink);
+  border-radius:9px;
+  font-family:"IBM Plex Mono",monospace;
+  font-size:12.3px;
+  line-height:1.75;
+  overflow-x:auto;
+  white-space:pre;
+}
+.log .k{color:var(--mono-accent);}
+.log .c{color:#7a9a95;}
+
+footer{
+  border-top:1px solid var(--line);
+  padding-top:18px;
+  font-size:12.5px;
+  color:var(--ink-soft);
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+footer .mono{color:var(--ink-soft);}
+
+@media (prefers-reduced-motion: reduce){
+  details[open] summary::before{transition:none;}
+}
+</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700;800&display=swap">
+
+<div class="wrap">
+
+  <div class="masthead">
+    <div class="eyebrow">Genio 720 · RTSP Video Pipeline</div>
+    <h1>RTSP 串流解碼進度報告</h1>
+    <div class="meta-row">
+      <span>日期 <b>2026-09-10</b></span>
+      <span>裝置 <b>Genio 720 (MediaTek)</b></span>
+      <span>來源 <b>MediaMTX (Windows) → ffmpeg / c922 webcam</b></span>
+      <span>狀態 <b>單路 720p30 即時顯示已驗證</b></span>
+    </div>
+  </div>
+
+  <svg class="trace" viewBox="0 0 760 28" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0,14 L60,14 L72,4 L84,24 L96,14 L140,14 L152,20 L164,8 L176,14 L760,14"/>
+  </svg>
+
+  <section aria-label="摘要">
+    <div class="status-row">
+      <span class="pill ok"><span class="dot"></span>UDP + RTSP 串流已打通</span>
+      <span class="pill ok"><span class="dot"></span>軟解 720p30 即時顯示已驗證</span>
+      <span class="pill warn"><span class="dot"></span>硬解 v4l2h264dec 相容性問題（已知限制，暫不影響進度）</span>
+    </div>
+    <p>目前用軟體解碼（<span class="mono">avdec_h264</span>）已經可以穩定、低延遲地顯示 720p30 的 RTSP 畫面。硬體解碼器在這個即時串流情境下有協商問題，已排查出根因，先列為已知限制，不卡當前進度。</p>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <span class="idx">01 / Genio 720 接 RTSP 注意事項</span>
+      <h2>接線之前，這 5 件事最容易出包</h2>
+    </div>
+    <div class="checklist">
+      <div class="check-item">
+        <div class="num">1</div>
+        <div class="body">
+          <div class="title">編碼端色度取樣必須是 4:2:0</div>
+          <div class="desc">Windows 端 ffmpeg 用 <code>-c:v libx264</code> 若不加 <code>-pix_fmt yuv420p</code>，webcam 原始格式會被編成 4:2:2（High 4:2:2 profile），硬體解碼器直接拒收；軟解可以吃，但仍建議統一用 4:2:0，相容性最高、也省頻寬。</div>
+        </div>
+      </div>
+      <div class="check-item">
+        <div class="num">2</div>
+        <div class="body">
+          <div class="title">UDP 低延遲 vs 防火牆</div>
+          <div class="desc">走 <code>protocols=udp</code> 延遲最低，但 RTP／RTCP 是兩個各自動態配發的 UDP port，Windows 跟 Linux 端的防火牆都要放行，實務上最常卡在這裡（收得到 RTP 但連線仍失敗）。</div>
+        </div>
+      </div>
+      <div class="check-item">
+        <div class="num">3</div>
+        <div class="body">
+          <div class="title">GOP / keyframe 間隔</div>
+          <div class="desc">決定 client 中途加入時要等多久才看得到畫面，也決定硬解對「非 keyframe 起始」的容忍度——這次踩到的雷跟這個直接相關。</div>
+        </div>
+      </div>
+      <div class="check-item">
+        <div class="num">4</div>
+        <div class="body">
+          <div class="title">即時串流的 SDP 不帶解析度</div>
+          <div class="desc">跟本機檔案／測試訊號不同，RTSP 的 SDP 只有編碼參數，沒有寬高。部分硬解晶片（含 Genio 的 <code>v4l2h264dec</code>）需要一開始就知道解析度才能正確初始化，這正是本次踩雷的根因（詳見附錄）。</div>
+        </div>
+      </div>
+      <div class="check-item">
+        <div class="num">5</div>
+        <div class="body">
+          <div class="title">解析度／位元率對 CPU 負載的影響</div>
+          <div class="desc">目前 720p30 軟解很輕鬆；但如果未來接更高解析度來源（例如 360° 環景鏡頭，常見 1920×1920 以上），CPU 負擔會明顯上升，需要重新量測。</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <span class="idx">02 / 跟主管的說法</span>
+      <h2>軟解 vs 硬解，一句話講差異</h2>
+    </div>
+    <p>軟解是「用 CPU 跑解碼程式」，硬解是「用晶片內建的專用電路解碼」。硬解快又省電，但這次遇到的問題正是它「不夠寬容」——遇到不典型的即時串流就直接罷工；軟解比較笨重，但幾乎什麼都吃得下。</p>
+    <div class="compare">
+      <div class="compare-card neutral">
+        <span class="tag">目前採用</span>
+        <h3>軟解 Software Decode</h3>
+        <div class="sub">avdec_h264（CPU 通用運算）</div>
+        <ul>
+          <li>用 CPU 核心跑解碼演算法，不需要晶片內建硬體配合</li>
+          <li>相容性、容錯性高：可處理中途加入、caps 協商時機不理想等不規則情況</li>
+          <li>代價是吃 CPU；多路串流或高解析度時負載會上升</li>
+          <li>目前 720p30 單路：即時顯示，無延遲堆積</li>
+        </ul>
+      </div>
+      <div class="compare-card accent">
+        <span class="tag">已知限制</span>
+        <h3>硬解 Hardware Decode</h3>
+        <div class="sub">v4l2h264dec（晶片內建解碼電路）</div>
+        <ul>
+          <li>用晶片專用影像解碼電路，CPU 幾乎不用，功耗與 CPU 資源留給其他應用</li>
+          <li>對輸入串流格式／協商時機更敏感，遇到即時 RTSP 這種「一開始不知道解析度」的情境會初始化失敗</li>
+          <li>此問題根因在驅動／晶片層的協商邏輯，非單純程式邏輯可修，需要更深入排查或回報原廠</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <div class="verdict">
+    <span class="label">結論與建議</span>
+    <h3>現階段不需要急著修硬解</h3>
+    <p>軟解在目前規格（720p30、單路）下已經是即時顯示、沒有延遲落後，功能目標已達成。建議先把硬解相容性問題列為已知技術債，等出現以下任一情況再評估投入排查：</p>
+    <div class="trigger-list">
+      <div class="row">需要<b>同時多路</b>串流，CPU 負載明顯吃緊</div>
+      <div class="row">串流<b>解析度大幅提升</b>（例如接 360° 環景鏡頭）</div>
+      <div class="row">CPU 資源需要<b>留給其他應用邏輯</b>（非純顯示用途）</div>
+      <div class="row">裝置對<b>功耗／散熱</b>有明確限制</div>
+    </div>
+  </div>
+
+  <section>
+    <div class="section-head">
+      <span class="idx">附錄</span>
+      <h2>技術佐證（硬解失敗根因）</h2>
+    </div>
+    <details>
+      <summary>GStreamer debug 追蹤摘要</summary>
+      <div class="log"><span class="c"># h264parse 第一次送出 caps（SPS 尚未解析完，無解析度）</span>
+v4l2videodec <span class="k">Setting format</span>: video/x-h264, stream-format=byte-stream, alignment=au, parsed=true
+v4l2         <span class="k">Desired format</span> 320x240, format H264   <span class="c">← 沒有寬高，退回預設值</span>
+
+<span class="c"># h264parse 幾毫秒後送出真正的 caps（已解析出 1280x720）</span>
+h264parse    caps = ...width=1280, height=720...
+
+<span class="c"># 解碼器已鎖定 320x240，拒絕重新協商</span>
+v4l2videodec <span class="k">Returning sink caps EMPTY</span>
+GStreamer    <span class="k">streaming stopped, reason not-negotiated (-4)</span>  <span class="c">← 100% 重現，與 keyframe / UDP / RTCP 無關</span></div>
+    </details>
+  </section>
+
+  <footer>
+    <span>Genio 720 · rtsp_client_webcam.py</span>
+    <span class="mono">not-negotiated(-4) → root cause isolated → avdec_h264 fallback verified</span>
+  </footer>
+
+</div>
