@@ -3,3 +3,4 @@ __pycache__/
 *.pyo
 .venv/
 venv/
+.git_push_token
