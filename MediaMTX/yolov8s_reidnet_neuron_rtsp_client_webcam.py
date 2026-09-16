@@ -80,8 +80,21 @@ class ReidGallery:
         self.next_id = 1
         self.frame_no = 0
 
-    def assign(self, embeddings):
+    def tick(self):
+        """Advance the frame clock and purge stale tracks. Called once per
+        processed frame regardless of whether anyone was detected, so a
+        track's age keeps advancing (and gets reaped) even while the scene
+        is empty -- and so purging happens before, not after, the next
+        match attempt (otherwise a person reappearing after REID_MAX_AGE
+        would still match their own not-yet-purged old embedding and wrongly
+        keep their old id instead of getting a new one)."""
         self.frame_no += 1
+        stale = [tid for tid, seen in self.last_seen.items() if self.frame_no - seen > REID_MAX_AGE]
+        for tid in stale:
+            self.embeddings.pop(tid, None)
+            self.last_seen.pop(tid, None)
+
+    def assign(self, embeddings):
         n = len(embeddings)
         gal_ids = list(self.embeddings.keys())
 
@@ -111,12 +124,11 @@ class ReidGallery:
                 self.embeddings[ids[i]] = merged / (np.linalg.norm(merged) + 1e-9)
             self.last_seen[ids[i]] = self.frame_no
 
-        stale = [tid for tid, seen in self.last_seen.items() if self.frame_no - seen > REID_MAX_AGE]
-        for tid in stale:
-            self.embeddings.pop(tid, None)
-            self.last_seen.pop(tid, None)
-
         return ids
+
+    def log_ages(self):
+        for tid, seen in self.last_seen.items():
+            print(f"[reid age] tid={tid} frame_no={self.frame_no} seen={seen} age={self.frame_no - seen}")
 
 
 class Detector:
@@ -228,8 +240,10 @@ class Detector:
 
         dets = [d for d in dets if d[4] == PERSON_CLASS_ID]
 
+        self.gallery.tick()
         track_ids = self._reid_embed(dets)
         self.detected = [d + (tid,) for d, tid in zip(dets, track_ids)]
+        self.gallery.log_ages()
 
     def on_caps_changed(self, overlay, caps):
         self.overlay_valid = True
